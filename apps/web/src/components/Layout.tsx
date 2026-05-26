@@ -1,7 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { apiJson } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
+import NotificationsPanel from "./NotificationsPanel";
 
 type Project = {
   id: string;
@@ -15,6 +17,7 @@ type ProjectsResponse = {
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const [showNotifications, setShowNotifications] = useState(false);
   const { data } = useQuery({
     queryKey: ["projects"],
     queryFn: () => apiJson<ProjectsResponse>("/api/projects")
@@ -48,13 +51,22 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         <header className="topbar">
           <h2>{location.pathname === "/" ? "Workspace" : "Project"}</h2>
           <div className="user-chip">
+            <button
+              className="button secondary"
+              onClick={() => setShowNotifications((prev) => !prev)}
+            >
+              Notifications
+            </button>
             {user?.displayName ?? user?.email}
             <button className="button secondary" onClick={logout}>
               Sign out
             </button>
           </div>
         </header>
-        <main className="main-content">{children}</main>
+        <main className="main-content">
+          {showNotifications && <NotificationsPanel />}
+          {children}
+        </main>
       </div>
     </div>
   );

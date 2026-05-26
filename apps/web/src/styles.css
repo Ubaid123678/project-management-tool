@@ -116,6 +116,60 @@ button {
   animation: fadeInUp 0.5s ease forwards;
 }
 
+.panel {
+  background: #fffdf9;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  margin-bottom: 20px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.panel-item {
+  text-align: left;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  cursor: pointer;
+  display: grid;
+  gap: 6px;
+}
+
+.panel-item-unread {
+  border-color: var(--highlight);
+  background: #fff4ea;
+}
+
+.panel-section {
+  margin-top: 16px;
+}
+
+.panel-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
 .button {
   border: none;
   background: var(--primary);
@@ -182,6 +236,9 @@ button {
   border: 1px solid #efe6d9;
   margin-bottom: 12px;
   box-shadow: 0 8px 14px rgba(45, 40, 30, 0.08);
+  cursor: pointer;
+  display: grid;
+  gap: 6px;
 }
 
 .badge {
@@ -197,6 +254,73 @@ button {
 .form-stack {
   display: grid;
   gap: 12px;
+}
+
+.inline-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 18, 16, 0.4);
+  display: grid;
+  place-items: center;
+  z-index: 10;
+}
+
+.modal {
+  width: min(720px, 92vw);
+  max-height: 88vh;
+  overflow: auto;
+  background: #fffdf9;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f3ede3;
+  font-size: 12px;
+}
+
+.comment {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  background: #fff;
+  display: grid;
+  gap: 6px;
+}
+
+.file-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
 }
 
 .auth-shell {

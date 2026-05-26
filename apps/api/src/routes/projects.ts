@@ -140,7 +140,11 @@ router.get("/:projectId", requireAuth, async (req, res) => {
           }
         }
       },
-      members: true
+      members: {
+        include: {
+          user: true
+        }
+      }
     }
   });
 
@@ -312,5 +316,51 @@ router.patch(
     return res.json({ status: "ok" });
   }
 );
+
+router.get("/:projectId/tasks/search", requireAuth, async (req, res) => {
+  const { projectId } = req.params;
+  const member = await ensureMember(projectId, req.user?.userId ?? "");
+  if (!member) {
+    return res.status(403).json({ code: "forbidden", message: "Access denied" });
+  }
+
+  const query = (req.query.q as string | undefined)?.trim();
+  if (!query) {
+    return res.status(400).json({ code: "invalid_input", message: "Query required" });
+  }
+
+  const assigneeId = req.query.assigneeId as string | undefined;
+  const columnId = req.query.columnId as string | undefined;
+  const dueBefore = req.query.dueBefore as string | undefined;
+  const dueAfter = req.query.dueAfter as string | undefined;
+
+  const tasks = await prisma.task.findMany({
+    where: {
+      board: { projectId },
+      OR: [
+        { title: { contains: query, mode: "insensitive" } },
+        { description: { contains: query, mode: "insensitive" } }
+      ],
+      ...(columnId ? { columnId } : {}),
+      ...(assigneeId
+        ? { assignees: { some: { userId: assigneeId } } }
+        : {}),
+      ...(dueBefore || dueAfter
+        ? {
+            dueDate: {
+              ...(dueBefore ? { lte: new Date(dueBefore) } : {}),
+              ...(dueAfter ? { gte: new Date(dueAfter) } : {})
+            }
+          }
+        : {})
+    },
+    include: {
+      assignees: true
+    },
+    orderBy: { updatedAt: "desc" }
+  });
+
+  return res.json({ tasks });
+});
 
 export default router;

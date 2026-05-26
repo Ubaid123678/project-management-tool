@@ -4,7 +4,7 @@ import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
-import ProjectBoard from "./pages/ProjectBoard";
+import ProjectBoard from "./pages/ProjectBoard.tsx";
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const { user, isLoading } = useAuth();

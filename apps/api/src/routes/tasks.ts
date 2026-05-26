@@ -4,6 +4,8 @@ import prisma from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 import { broadcastToProject } from "../realtime/socket.js";
 import { parseMentions } from "../utils/mentions.js";
+import { getUploadPath, getUploadUrl, uploadMiddleware } from "../utils/uploads.js";
+import fs from "fs/promises";
 
 const router = Router();
 
@@ -60,11 +62,29 @@ router.get("/:taskId", requireAuth, async (req, res) => {
     where: { id: taskId },
     include: {
       assignees: true,
-      comments: true
+      comments: {
+        include: {
+          author: true,
+          mentions: true
+        }
+      },
+      attachments: true
     }
   });
 
-  return res.json({ task: fullTask });
+  const attachments = (fullTask?.attachments ?? []).map((attachment) => ({
+    ...attachment,
+    url: getUploadUrl(attachment.storageKey)
+  }));
+
+  return res.json({
+    task: fullTask
+      ? {
+          ...fullTask,
+          attachments
+        }
+      : null
+  });
 });
 
 router.patch("/:taskId", requireAuth, async (req, res) => {
@@ -270,6 +290,10 @@ router.post("/:taskId/comments", requireAuth, async (req, res) => {
       mentions: {
         create: mentionEntries
       }
+    },
+    include: {
+      author: true,
+      mentions: true
     }
   });
 
@@ -300,18 +324,74 @@ router.post("/:taskId/comments", requireAuth, async (req, res) => {
   return res.status(201).json({ comment });
 });
 
-router.post("/:taskId/attachments", requireAuth, async (_req, res) => {
-  return res.status(501).json({
-    code: "not_implemented",
-    message: "Attachments are not implemented in v1"
-  });
-});
+router.post(
+  "/:taskId/attachments",
+  requireAuth,
+  uploadMiddleware.single("file"),
+  async (req, res) => {
+    const { taskId } = req.params;
+    const { task, member, projectId } = await ensureMemberByTask(
+      taskId,
+      req.user?.userId ?? ""
+    );
 
-router.delete("/:taskId/attachments/:attachmentId", requireAuth, async (_req, res) => {
-  return res.status(501).json({
-    code: "not_implemented",
-    message: "Attachments are not implemented in v1"
-  });
-});
+    if (!task || !member || !projectId) {
+      return res.status(403).json({ code: "forbidden", message: "Access denied" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ code: "invalid_input", message: "No file" });
+    }
+
+    const attachment = await prisma.attachment.create({
+      data: {
+        taskId,
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        storageKey: req.file.filename,
+        uploadedBy: req.user?.userId ?? ""
+      }
+    });
+
+    broadcastToProject(projectId, "task:updated", { taskId });
+    return res.status(201).json({
+      attachment: {
+        ...attachment,
+        url: getUploadUrl(attachment.storageKey)
+      }
+    });
+  }
+);
+
+router.delete(
+  "/:taskId/attachments/:attachmentId",
+  requireAuth,
+  async (req, res) => {
+    const { taskId, attachmentId } = req.params;
+    const { task, member, projectId } = await ensureMemberByTask(
+      taskId,
+      req.user?.userId ?? ""
+    );
+
+    if (!task || !member || !projectId) {
+      return res.status(403).json({ code: "forbidden", message: "Access denied" });
+    }
+
+    const attachment = await prisma.attachment.findUnique({
+      where: { id: attachmentId }
+    });
+
+    if (!attachment || attachment.taskId !== taskId) {
+      return res.status(404).json({ code: "not_found", message: "Not found" });
+    }
+
+    await prisma.attachment.delete({ where: { id: attachmentId } });
+    await fs.rm(getUploadPath(attachment.storageKey), { force: true });
+
+    broadcastToProject(projectId, "task:updated", { taskId });
+    return res.json({ status: "ok" });
+  }
+);
 
 export default router;

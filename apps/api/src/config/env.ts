@@ -9,7 +9,9 @@ const env = {
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET ?? "dev_refresh",
   tokenExpiresIn: process.env.TOKEN_EXPIRES_IN ?? "15m",
   refreshExpiresIn: process.env.REFRESH_EXPIRES_IN ?? "7d",
-  corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:5173"
+  corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
+  uploadDir: process.env.UPLOAD_DIR ?? "uploads",
+  uploadMaxSizeMb: Number(process.env.UPLOAD_MAX_SIZE_MB ?? 10)
 };
 
 if (!env.databaseUrl) {

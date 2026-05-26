@@ -5,7 +5,8 @@ export const apiFetch = async (
   options: RequestInit = {}
 ): Promise<Response> => {
   const headers = new Headers(options.headers ?? {});
-  if (!headers.has("Content-Type")) {
+  const isFormData = options.body instanceof FormData;
+  if (!headers.has("Content-Type") && !isFormData) {
     headers.set("Content-Type", "application/json");
   }
 

@@ -52,6 +52,7 @@ model User {
   tasksCreated           Task[]                   @relation("TaskCreator")
   comments               Comment[]
   mentions               Mention[]
+  attachments            Attachment[]
   notifications          Notification[]
   notificationPreferences NotificationPreference?
   taskAssignments        TaskAssignee[]
@@ -157,9 +158,26 @@ model Task {
   creator     User         @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: Cascade)
   assignees   TaskAssignee[]
   comments    Comment[]
+  attachments Attachment[]
 
   @@index([boardId])
   @@index([columnId])
+}
+
+model Attachment {
+  id          String   @id @default(uuid())
+  taskId      String   @map("task_id")
+  fileName    String   @map("file_name")
+  fileSize    Int      @map("file_size")
+  mimeType    String   @map("mime_type")
+  storageKey  String   @map("storage_key")
+  uploadedBy  String   @map("uploaded_by")
+  uploadedAt  DateTime @default(now()) @map("uploaded_at")
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploader    User     @relation(fields: [uploadedBy], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([uploadedBy])
 }
 
 model TaskAssignee {
