@@ -1,0 +1,17 @@
+{
+  "name": "project-management-tool",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n web,api \"npm run dev -w @pmt/web\" \"npm run dev -w @pmt/api\"",
+    "build": "npm run build -w @pmt/web && npm run build -w @pmt/api",
+    "lint": "npm run lint -w @pmt/web && npm run lint -w @pmt/api",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "prettier": "^3.3.3"
+  }
+}
