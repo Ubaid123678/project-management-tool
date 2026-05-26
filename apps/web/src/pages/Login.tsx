@@ -22,31 +22,51 @@ const Login = () => {
 
   return (
     <div className="auth-shell">
-      <div className="card auth-card">
-        <h2>Welcome back</h2>
-        <p className="badge">Sign in to pick up your work</p>
-        <form className="form-stack" onSubmit={handleSubmit}>
-          <input
-            className="input"
-            placeholder="Email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-          <input
-            className="input"
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-          {error && <div className="badge">{error}</div>}
-          <button className="button" type="submit">
-            Sign in
-          </button>
-        </form>
-        <p>
-          No account? <Link to="/register">Create one</Link>
-        </p>
+      <div className="auth-grid">
+        <div className="auth-hero">
+          <span className="badge">Project Flow</span>
+          <h1>Focus the team on the work that matters most.</h1>
+          <p>
+            Track projects, move tasks through your pipeline, and keep every
+            conversation in one place.
+          </p>
+          <div className="hero-metrics">
+            <div>
+              <strong>Realtime</strong>
+              <span>Live updates for every board</span>
+            </div>
+            <div>
+              <strong>Search</strong>
+              <span>Find tasks in seconds</span>
+            </div>
+          </div>
+        </div>
+        <div className="card auth-card">
+          <h2>Welcome back</h2>
+          <p className="subtle">Sign in to pick up your work</p>
+          <form className="form-stack" onSubmit={handleSubmit}>
+            <input
+              className="input"
+              placeholder="Email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+            <input
+              className="input"
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+            {error && <div className="badge danger">{error}</div>}
+            <button className="button" type="submit">
+              Sign in
+            </button>
+          </form>
+          <p className="subtle">
+            No account? <Link to="/register">Create one</Link>
+          </p>
+        </div>
       </div>
     </div>
   );

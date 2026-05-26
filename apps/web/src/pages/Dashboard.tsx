@@ -41,8 +41,13 @@ const Dashboard = () => {
   return (
     <div className="grid" style={{ gap: 28 }}>
       <section className="card">
-        <h3>Start a new project</h3>
-        <div className="form-stack">
+        <div className="section-header">
+          <div>
+            <h3>Start a new project</h3>
+            <p className="subtle">Create a board and invite your team.</p>
+          </div>
+        </div>
+        <div className="form-grid">
           <input
             className="input"
             placeholder="Project name"
@@ -55,21 +60,33 @@ const Dashboard = () => {
             value={description}
             onChange={(event) => setDescription(event.target.value)}
           />
-          {error && <div className="badge">{error}</div>}
-          <button className="button" onClick={createProject}>
-            Create project
-          </button>
+          <div className="inline-row">
+            {error && <div className="badge danger">{error}</div>}
+            <button className="button" onClick={createProject}>
+              Create project
+            </button>
+          </div>
         </div>
       </section>
 
       <section>
-        <h3>Active projects</h3>
+        <div className="section-header">
+          <div>
+            <h3>Active projects</h3>
+            <p className="subtle">Jump back into any workspace.</p>
+          </div>
+        </div>
         <div className="grid project-grid">
           {(data?.projects ?? []).map((project) => (
             <Link key={project.id} to={`/projects/${project.id}`}>
-              <div className="card">
-                <h4>{project.name}</h4>
-                <p className="badge">{project.description ?? "No description"}</p>
+              <div className="card project-card">
+                <div>
+                  <h4>{project.name}</h4>
+                  <p className="subtle">
+                    {project.description ?? "No description"}
+                  </p>
+                </div>
+                <span className="badge">Open board</span>
               </div>
             </Link>
           ))}

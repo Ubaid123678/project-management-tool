@@ -239,11 +239,14 @@ const ProjectBoard = () => {
   return (
     <div className="grid" style={{ gap: 24 }}>
       <section className="card">
-        <div className="inline-row">
-          <h3>{data?.project.name ?? "Project"}</h3>
-          <p className="badge">Realtime board sync is enabled</p>
+        <div className="section-header">
+          <div>
+            <h3>{data?.project.name ?? "Project"}</h3>
+            <p className="subtle">Realtime board sync is enabled</p>
+          </div>
+          <span className="badge">Live</span>
         </div>
-        <div className="inline-row">
+        <div className="inline-row project-toolbar">
           <select
             className="input"
             value={activeBoard?.id}
@@ -265,13 +268,14 @@ const ProjectBoard = () => {
             Add board
           </button>
         </div>
-        <div className="inline-row">
+        <div className="inline-row project-search">
           <input
             className="input"
             placeholder="Search tasks"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
           />
+          <span className="badge">Filter by keyword</span>
         </div>
         {searchQuery && (
           <div className="panel-list">
@@ -291,7 +295,12 @@ const ProjectBoard = () => {
       </section>
 
       <section className="card">
-        <h3>Team</h3>
+        <div className="section-header">
+          <div>
+            <h3>Team</h3>
+            <p className="subtle">Keep roles and access in sync.</p>
+          </div>
+        </div>
         {currentMember?.role === "owner" && (
           <div className="inline-row">
             <input
@@ -305,7 +314,7 @@ const ProjectBoard = () => {
             </button>
           </div>
         )}
-        <div className="panel-list">
+        <div className="panel-list team-list">
           {members.map((member) => (
             <div key={member.userId} className="panel-item">
               <strong>{member.user.displayName ?? member.user.email}</strong>

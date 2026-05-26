@@ -27,6 +27,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     <div className="app-shell">
       <aside className="sidebar">
         <h1>Project Flow</h1>
+        <p className="subtle">Operations overview</p>
         <nav>
           <Link
             className={`nav-link ${location.pathname === "/" ? "active" : ""}`}
@@ -64,8 +65,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           </div>
         </header>
         <main className="main-content">
-          {showNotifications && <NotificationsPanel />}
-          {children}
+          <div className="page">
+            {showNotifications && <NotificationsPanel />}
+            {children}
+          </div>
         </main>
       </div>
     </div>

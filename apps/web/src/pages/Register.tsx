@@ -23,37 +23,57 @@ const Register = () => {
 
   return (
     <div className="auth-shell">
-      <div className="card auth-card">
-        <h2>Create your workspace</h2>
-        <p className="badge">Plan, track, and ship with clarity</p>
-        <form className="form-stack" onSubmit={handleSubmit}>
-          <input
-            className="input"
-            placeholder="Display name"
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-          />
-          <input
-            className="input"
-            placeholder="Email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-          <input
-            className="input"
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-          {error && <div className="badge">{error}</div>}
-          <button className="button" type="submit">
-            Create account
-          </button>
-        </form>
-        <p>
-          Already have an account? <Link to="/login">Sign in</Link>
-        </p>
+      <div className="auth-grid">
+        <div className="auth-hero">
+          <span className="badge">Project Flow</span>
+          <h1>Create a workspace that feels effortless.</h1>
+          <p>
+            Bring your project boards, notifications, and team discussions into
+            one clear system.
+          </p>
+          <div className="hero-metrics">
+            <div>
+              <strong>Boards</strong>
+              <span>Craft workflows in minutes</span>
+            </div>
+            <div>
+              <strong>Teams</strong>
+              <span>Invite, assign, and ship</span>
+            </div>
+          </div>
+        </div>
+        <div className="card auth-card">
+          <h2>Create your workspace</h2>
+          <p className="subtle">Plan, track, and ship with clarity</p>
+          <form className="form-stack" onSubmit={handleSubmit}>
+            <input
+              className="input"
+              placeholder="Display name"
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+            />
+            <input
+              className="input"
+              placeholder="Email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+            <input
+              className="input"
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+            {error && <div className="badge danger">{error}</div>}
+            <button className="button" type="submit">
+              Create account
+            </button>
+          </form>
+          <p className="subtle">
+            Already have an account? <Link to="/login">Sign in</Link>
+          </p>
+        </div>
       </div>
     </div>
   );
