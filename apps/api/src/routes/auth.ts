@@ -2,6 +2,7 @@ import { Router, type Response } from "express";
 import { z } from "zod";
 import crypto from "crypto";
 import prisma from "../lib/prisma.js";
+import redis, { cacheSession, getCachedSession, deleteCachedSession } from "../lib/redis.js";
 import { hashPassword, verifyPassword } from "../utils/password.js";
 import {
   signAccessToken,
@@ -66,6 +67,12 @@ const createSession = async (userId: string) => {
       refreshTokenHash,
       expiresAt
     }
+  });
+
+  await cacheSession(sessionId, {
+    userId,
+    refreshTokenHash,
+    expiresAt: expiresAt.toISOString()
   });
 
   return { sessionId, refreshToken };
@@ -150,7 +157,10 @@ router.post("/logout", async (req, res) => {
   if (refreshToken) {
     try {
       const payload = verifyRefreshToken(refreshToken);
-      await prisma.session.delete({ where: { id: payload.sessionId } });
+      await Promise.all([
+        prisma.session.delete({ where: { id: payload.sessionId } }),
+        deleteCachedSession(payload.sessionId)
+      ]);
     } catch (error) {
       // Ignore invalid refresh tokens to allow logout to succeed.
     }
@@ -170,9 +180,22 @@ router.post("/refresh", async (req, res) => {
 
   try {
     const payload = verifyRefreshToken(refreshToken);
-    const existing = await prisma.session.findUnique({
+    let existing = await prisma.session.findUnique({
       where: { id: payload.sessionId }
     });
+
+    if (!existing) {
+      const cached = await getCachedSession(payload.sessionId);
+      if (cached && cached.refreshTokenHash === hashToken(refreshToken)) {
+        existing = {
+          id: payload.sessionId,
+          userId: cached.userId,
+          refreshTokenHash: cached.refreshTokenHash,
+          expiresAt: new Date(cached.expiresAt),
+          createdAt: new Date()
+        };
+      }
+    }
 
     if (!existing || existing.refreshTokenHash !== hashToken(refreshToken)) {
       return res
@@ -180,7 +203,10 @@ router.post("/refresh", async (req, res) => {
         .json({ code: "unauthorized", message: "Invalid refresh token" });
     }
 
-    await prisma.session.delete({ where: { id: payload.sessionId } });
+    await Promise.all([
+      prisma.session.delete({ where: { id: payload.sessionId } }),
+      deleteCachedSession(payload.sessionId)
+    ]);
 
     const { sessionId, refreshToken: nextRefresh } = await createSession(
       payload.userId

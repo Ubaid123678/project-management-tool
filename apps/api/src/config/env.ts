@@ -11,7 +11,8 @@ const env = {
   refreshExpiresIn: process.env.REFRESH_EXPIRES_IN ?? "7d",
   corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
   uploadDir: process.env.UPLOAD_DIR ?? "uploads",
-  uploadMaxSizeMb: Number(process.env.UPLOAD_MAX_SIZE_MB ?? 10)
+  uploadMaxSizeMb: Number(process.env.UPLOAD_MAX_SIZE_MB ?? 10),
+  redisUrl: process.env.REDIS_URL ?? "redis://localhost:6380"
 };
 
 if (!env.databaseUrl) {

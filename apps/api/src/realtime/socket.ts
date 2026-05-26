@@ -1,4 +1,6 @@
 import { Server } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
+import { Redis } from "ioredis";
 import env from "../config/env.js";
 
 let io: Server | null = null;
@@ -10,6 +12,10 @@ export const initSocket = (httpServer: Parameters<Server["attach"]>[0]) => {
       credentials: true
     }
   });
+
+  const pubClient = new Redis(env.redisUrl);
+  const subClient = pubClient.duplicate();
+  io.adapter(createAdapter(pubClient, subClient));
 
   io.on("connection", (socket) => {
     socket.on("project:join", ({ projectId }) => {

@@ -10,12 +10,59 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pmt"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7
     ports:
       - "6380:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: 4000
+      DATABASE_URL: postgresql://pmt:pmt@postgres:5432/pmt?schema=public
+      JWT_SECRET: ${JWT_SECRET:-dev_secret}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_refresh}
+      TOKEN_EXPIRES_IN: 15m
+      REFRESH_EXPIRES_IN: 7d
+      CORS_ORIGIN: http://localhost:80
+      UPLOAD_DIR: /data/uploads
+      UPLOAD_MAX_SIZE_MB: 10
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - api_uploads:/data/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
 volumes:
   postgres_data:
   redis_data:
+  api_uploads:
