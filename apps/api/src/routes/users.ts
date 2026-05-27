@@ -4,6 +4,7 @@ import prisma from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 import { hashPassword, verifyPassword } from "../utils/password.js";
 import { toPublicUser } from "../utils/users.js";
+import { uploadMiddleware, getUploadUrl } from "../utils/uploads.js";
 
 const router = Router();
 
@@ -38,6 +39,22 @@ router.patch("/me", requireAuth, async (req, res) => {
   const user = await prisma.user.update({
     where: { id: req.user?.userId },
     data: data.data
+  });
+
+  return res.json({ user: toPublicUser(user) });
+});
+
+router.post("/me/avatar", requireAuth, uploadMiddleware.single("file"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ code: "invalid_input", message: "No file uploaded" });
+  }
+
+  const storageKey = req.file.filename;
+  const avatarUrl = getUploadUrl(storageKey);
+
+  const user = await prisma.user.update({
+    where: { id: req.user?.userId },
+    data: { avatarUrl }
   });
 
   return res.json({ user: toPublicUser(user) });

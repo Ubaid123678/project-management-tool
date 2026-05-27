@@ -1,16 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiJson } from "../lib/api";
 
-export type Notification = {
+type Notification = {
   id: string;
   title: string;
   body: string;
   readAt?: string | null;
   createdAt: string;
-};
-
-type NotificationResponse = {
-  notifications: Notification[];
 };
 
 type Preferences = {
@@ -24,20 +20,28 @@ type Preferences = {
   memberRemoved: boolean;
 };
 
-type PreferencesResponse = {
-  preferences: Preferences | null;
+const PREF_LABELS: Record<keyof Preferences, string> = {
+  taskAssigned: "Task assigned",
+  taskReassigned: "Task reassigned",
+  taskMention: "Mentioned in comment",
+  taskComment: "Comment on task",
+  taskDeleted: "Task deleted",
+  projectDeleted: "Project deleted",
+  projectInvite: "Project invitation",
+  memberRemoved: "Member removed"
 };
 
 const NotificationsPanel = () => {
   const queryClient = useQueryClient();
+
   const { data } = useQuery({
     queryKey: ["notifications"],
-    queryFn: () => apiJson<NotificationResponse>("/api/notifications")
+    queryFn: () => apiJson<{ notifications: Notification[] }>("/api/notifications")
   });
 
   const { data: prefs } = useQuery({
     queryKey: ["notification-preferences"],
-    queryFn: () => apiJson<PreferencesResponse>("/api/notifications/preferences")
+    queryFn: () => apiJson<{ preferences: Preferences | null }>("/api/notifications/preferences")
   });
 
   const markRead = async (id: string) => {
@@ -58,51 +62,67 @@ const NotificationsPanel = () => {
     queryClient.invalidateQueries({ queryKey: ["notification-preferences"] });
   };
 
-  const unreadCount = (data?.notifications ?? []).filter(
-    (item) => !item.readAt
-  ).length;
+  const notifications = data?.notifications ?? [];
+  const unreadCount = notifications.filter((n) => !n.readAt).length;
 
   return (
-    <div className="panel">
-      <div className="panel-header">
-        <h4>Notifications</h4>
-        <button className="button secondary" onClick={markAll}>
+    <div className="notifications-panel animate-slide-up">
+      <div className="notifications-header">
+        <h4>Notifications {unreadCount > 0 && <span className="badge badge-primary">{unreadCount}</span>}</h4>
+        <button className="btn btn-secondary btn-sm" onClick={markAll}>
           Mark all read
         </button>
       </div>
-      <p className="badge">Unread: {unreadCount}</p>
-      <div className="panel-list">
-        {(data?.notifications ?? []).map((item) => (
-          <button
-            type="button"
-            key={item.id}
-            className={`panel-item ${item.readAt ? "" : "panel-item-unread"}`}
-            onClick={() => markRead(item.id)}
-          >
-            <strong>{item.title}</strong>
-            <span>{item.body}</span>
-          </button>
-        ))}
-      </div>
-      <div className="panel-section">
-        <h5>Preferences</h5>
-        {prefs?.preferences && (
-          <div className="panel-grid">
-            {Object.entries(prefs.preferences).map(([key, value]) => (
-              <label key={key} className="toggle-row">
-                <span>{key}</span>
-                <input
-                  type="checkbox"
-                  checked={Boolean(value)}
-                  onChange={(event) =>
-                    updatePref(key as keyof Preferences, event.target.checked)
-                  }
-                />
-              </label>
-            ))}
+
+      <div className="notifications-list">
+        {notifications.length === 0 ? (
+          <div style={{ padding: "24px 20px", textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
+            No notifications yet
           </div>
+        ) : (
+          notifications.map((item) => (
+            <button
+              key={item.id}
+              className={`notification-item ${item.readAt ? "" : "unread"}`}
+              onClick={() => markRead(item.id)}
+            >
+              <span className="notification-title">{item.title}</span>
+              <span className="notification-body">{item.body}</span>
+              <span className="notification-time">
+                {new Date(item.createdAt).toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit"
+                })}
+              </span>
+            </button>
+          ))
         )}
       </div>
+
+      {prefs?.preferences && (
+        <div style={{ borderTop: "1px solid var(--border)" }}>
+          <div className="notifications-header" style={{ background: "transparent" }}>
+            <h4>Preferences</h4>
+          </div>
+          <div className="prefs-grid">
+            {(Object.entries(prefs.preferences) as [keyof Preferences, boolean][]).map(([key, value]) => (
+              <div key={key} className="toggle-row">
+                <label>{PREF_LABELS[key] ?? key}</label>
+                <label className="toggle">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(value)}
+                    onChange={(e) => updatePref(key, e.target.checked)}
+                  />
+                  <span className="toggle-slider" />
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

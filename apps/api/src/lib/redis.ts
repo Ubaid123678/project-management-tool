@@ -1,11 +1,14 @@
 import { Redis } from "ioredis";
 import env from "../config/env.js";
 
-const redis = new Redis(env.redisUrl);
-
-redis.on("error", (err) => {
-  console.error("Redis connection error:", err);
+const redis = new Redis(env.redisUrl, {
+  lazyConnect: true,
+  maxRetriesPerRequest: 20,
+  retryStrategy: (times) => Math.min(times * 100, 3000)
 });
+
+redis.connect().catch(() => {});
+redis.on("error", () => {});
 
 export default redis;
 
@@ -18,15 +21,23 @@ type SessionData = {
 };
 
 export const cacheSession = async (sessionId: string, data: SessionData) => {
-  await redis.setex(`session:${sessionId}`, SESSION_TTL, JSON.stringify(data));
+  try {
+    await redis.setex(`session:${sessionId}`, SESSION_TTL, JSON.stringify(data));
+  } catch {}
 };
 
 export const getCachedSession = async (sessionId: string): Promise<SessionData | null> => {
-  const raw = await redis.get(`session:${sessionId}`);
-  if (!raw) return null;
-  return JSON.parse(raw) as SessionData;
+  try {
+    const raw = await redis.get(`session:${sessionId}`);
+    if (!raw) return null;
+    return JSON.parse(raw) as SessionData;
+  } catch {
+    return null;
+  }
 };
 
 export const deleteCachedSession = async (sessionId: string) => {
-  await redis.del(`session:${sessionId}`);
+  try {
+    await redis.del(`session:${sessionId}`);
+  } catch {}
 };

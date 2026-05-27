@@ -4,7 +4,8 @@ import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
-import ProjectBoard from "./pages/ProjectBoard.tsx";
+import ProjectBoard from "./pages/ProjectBoard";
+import Profile from "./pages/Profile";
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const { user, isLoading } = useAuth();
@@ -37,6 +38,16 @@ const AppRoutes = () => (
         <ProtectedRoute>
           <Layout>
             <ProjectBoard />
+          </Layout>
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/profile"
+      element={
+        <ProtectedRoute>
+          <Layout>
+            <Profile />
           </Layout>
         </ProtectedRoute>
       }

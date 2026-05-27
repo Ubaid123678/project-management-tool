@@ -203,6 +203,21 @@ router.delete("/:projectId", requireAuth, async (req, res) => {
   return res.json({ status: "ok" });
 });
 
+router.get("/invitations/pending", requireAuth, async (req, res) => {
+  const invitations = await prisma.invitation.findMany({
+    where: {
+      email: (await prisma.user.findUnique({ where: { id: req.user?.userId } }))?.email ?? "",
+      status: "pending"
+    },
+    include: {
+      project: { select: { id: true, name: true } }
+    },
+    orderBy: { createdAt: "desc" }
+  });
+
+  return res.json({ invitations });
+});
+
 router.post("/:projectId/invitations", requireAuth, async (req, res) => {
   const data = invitationSchema.safeParse(req.body);
   if (!data.success) {

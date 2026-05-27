@@ -38,17 +38,6 @@ type Member = {
   };
 };
 
-type Project = {
-  id: string;
-  name: string;
-  boards: Board[];
-  members: Member[];
-};
-
-type ProjectResponse = {
-  project: Project;
-};
-
 type SearchResult = {
   id: string;
   title: string;
@@ -57,37 +46,43 @@ type SearchResult = {
   dueDate?: string | null;
 };
 
-type TaskDetailResponse = {
-  task: {
+type TaskDetail = {
+  id: string;
+  title: string;
+  description?: string | null;
+  dueDate?: string | null;
+  priority: "low" | "medium" | "high" | "urgent";
+  columnId: string;
+  assignees: { userId: string }[];
+  comments: {
     id: string;
-    title: string;
-    description?: string | null;
-    dueDate?: string | null;
-    priority: "low" | "medium" | "high" | "urgent";
-    columnId: string;
-    assignees: { userId: string }[];
-    comments: {
-      id: string;
-      content: string;
-      author: { id: string; email: string; displayName?: string | null };
-      mentions: { id: string; userId: string }[];
-    }[];
-    attachments: {
-      id: string;
-      fileName: string;
-      fileSize: number;
-      url: string;
-    }[];
-  } | null;
+    content: string;
+    author: { id: string; email: string; displayName?: string | null };
+    mentions: { id: string; userId: string }[];
+  }[];
+  attachments: {
+    id: string;
+    fileName: string;
+    fileSize: number;
+    url: string;
+  }[];
+};
+
+const PriorityBadge = ({ priority }: { priority: string }) => {
+  const cls = priority === "low" ? "priority-low" :
+    priority === "medium" ? "priority-medium" :
+    priority === "high" ? "priority-high" : "priority-urgent";
+  return <span className={`badge ${cls}`}>{priority}</span>;
 };
 
 const ProjectBoard = () => {
   const { projectId } = useParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+
   const { data } = useQuery({
     queryKey: ["project", projectId],
-    queryFn: () => apiJson<ProjectResponse>(`/api/projects/${projectId}`),
+    queryFn: () => apiJson<{ project: { id: string; name: string; boards: Board[]; members: Member[] } }>(`/api/projects/${projectId}`),
     enabled: Boolean(projectId)
   });
 
@@ -98,10 +93,11 @@ const ProjectBoard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
+  const [showTeam, setShowTeam] = useState(false);
 
   const { data: taskDetail } = useQuery({
     queryKey: ["task", selectedTaskId],
-    queryFn: () => apiJson<TaskDetailResponse>(`/api/tasks/${selectedTaskId}`),
+    queryFn: () => apiJson<{ task: TaskDetail | null }>(`/api/tasks/${selectedTaskId}`),
     enabled: Boolean(selectedTaskId)
   });
 
@@ -115,15 +111,12 @@ const ProjectBoard = () => {
   });
 
   useEffect(() => {
-    if (!projectId) {
-      return;
-    }
+    if (!projectId) return;
 
     const socket = io(API_URL, { withCredentials: true });
     socket.emit("project:join", { projectId });
 
-    const refresh = () =>
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+    const refresh = () => queryClient.invalidateQueries({ queryKey: ["project", projectId] });
 
     socket.on("task:created", refresh);
     socket.on("task:updated", refresh);
@@ -140,9 +133,8 @@ const ProjectBoard = () => {
 
   const boards = data?.project.boards ?? [];
   const members = data?.project.members ?? [];
-  const currentMember = members.find((member) => member.userId === user?.id);
-  const activeBoard =
-    boards.find((board) => board.id === selectedBoardId) ?? boards[0];
+  const currentMember = members.find((m) => m.userId === user?.id);
+  const activeBoard = boards.find((b) => b.id === selectedBoardId) ?? boards[0];
 
   useEffect(() => {
     if (!selectedBoardId && boards.length > 0) {
@@ -153,10 +145,7 @@ const ProjectBoard = () => {
   const columns = activeBoard?.columns ?? [];
 
   const createBoard = async () => {
-    if (!boardName || !projectId) {
-      return;
-    }
-
+    if (!boardName || !projectId) return;
     await apiJson(`/api/projects/${projectId}/boards`, {
       method: "POST",
       body: JSON.stringify({ name: boardName })
@@ -166,10 +155,7 @@ const ProjectBoard = () => {
   };
 
   const createColumn = async () => {
-    if (!columnName || !activeBoard) {
-      return;
-    }
-
+    if (!columnName || !activeBoard) return;
     await apiJson(`/api/boards/${activeBoard.id}/columns`, {
       method: "POST",
       body: JSON.stringify({ name: columnName })
@@ -192,33 +178,24 @@ const ProjectBoard = () => {
   };
 
   const createTask = async (columnId: string) => {
-    if (!activeBoard) {
-      return;
-    }
-
+    if (!activeBoard) return;
     const title = drafts[columnId];
-    if (!title) {
-      return;
-    }
-
+    if (!title) return;
     await apiJson(`/api/boards/${activeBoard.id}/columns/${columnId}/tasks`, {
       method: "POST",
       body: JSON.stringify({ title })
     });
-
     setDrafts((prev) => ({ ...prev, [columnId]: "" }));
     queryClient.invalidateQueries({ queryKey: ["project", projectId] });
   };
 
   const taskColumns = useMemo(
-    () => columns.map((column) => ({ id: column.id, name: column.name })),
+    () => columns.map((c) => ({ id: c.id, name: c.name })),
     [columns]
   );
 
   const inviteMember = async () => {
-    if (!inviteEmail || !projectId) {
-      return;
-    }
+    if (!inviteEmail || !projectId) return;
     await apiJson(`/api/projects/${projectId}/invitations`, {
       method: "POST",
       body: JSON.stringify({ email: inviteEmail })
@@ -227,169 +204,193 @@ const ProjectBoard = () => {
   };
 
   const removeMember = async (memberId: string) => {
-    if (!projectId) {
-      return;
-    }
-    await apiJson(`/api/projects/${projectId}/members/${memberId}`, {
-      method: "DELETE"
-    });
+    if (!projectId) return;
+    await apiJson(`/api/projects/${projectId}/members/${memberId}`, { method: "DELETE" });
     queryClient.invalidateQueries({ queryKey: ["project", projectId] });
   };
 
   return (
-    <div className="grid" style={{ gap: 24 }}>
-      <section className="card">
-        <div className="section-header">
-          <div>
-            <h3>{data?.project.name ?? "Project"}</h3>
-            <p className="subtle">Realtime board sync is enabled</p>
-          </div>
-          <span className="badge">Live</span>
-        </div>
-        <div className="inline-row project-toolbar">
-          <select
-            className="input"
-            value={activeBoard?.id}
-            onChange={(event) => setSelectedBoardId(event.target.value)}
-          >
-            {boards.map((board) => (
-              <option key={board.id} value={board.id}>
-                {board.name}
-              </option>
-            ))}
-          </select>
-          <input
-            className="input"
-            placeholder="New board name"
-            value={boardName}
-            onChange={(event) => setBoardName(event.target.value)}
-          />
-          <button className="button" onClick={createBoard}>
-            Add board
-          </button>
-        </div>
-        <div className="inline-row project-search">
-          <input
-            className="input"
-            placeholder="Search tasks"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-          />
-          <span className="badge">Filter by keyword</span>
-        </div>
-        {searchQuery && (
-          <div className="panel-list">
-            {(searchResults?.tasks ?? []).map((task) => (
-              <button
-                type="button"
-                key={task.id}
-                className="panel-item"
-                onClick={() => setSelectedTaskId(task.id)}
-              >
-                <strong>{task.title}</strong>
-                <span>{task.description ?? "No description"}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="card">
-        <div className="section-header">
-          <div>
-            <h3>Team</h3>
-            <p className="subtle">Keep roles and access in sync.</p>
-          </div>
-        </div>
-        {currentMember?.role === "owner" && (
-          <div className="inline-row">
-            <input
-              className="input"
-              placeholder="Invite by email"
-              value={inviteEmail}
-              onChange={(event) => setInviteEmail(event.target.value)}
-            />
-            <button className="button" onClick={inviteMember}>
-              Send invite
-            </button>
-          </div>
-        )}
-        <div className="panel-list team-list">
-          {members.map((member) => (
-            <div key={member.userId} className="panel-item">
-              <strong>{member.user.displayName ?? member.user.email}</strong>
-              <span className="badge">{member.role}</span>
-              {currentMember?.role === "owner" && member.userId !== user?.id && (
-                <button
-                  className="button secondary"
-                  onClick={() => removeMember(member.userId)}
-                >
-                  Remove
-                </button>
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <div className="card">
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              {boards.length > 0 && (
+                <div className="board-tabs">
+                  {boards.map((board) => (
+                    <button
+                      key={board.id}
+                      className={`board-tab ${activeBoard?.id === board.id ? "active" : ""}`}
+                      onClick={() => setSelectedBoardId(board.id)}
+                    >
+                      {board.name}
+                    </button>
+                  ))}
+                </div>
               )}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="board">
-        {columns.map((column) => (
-          <div key={column.id} className="column">
-            <div className="inline-row">
               <input
                 className="input"
-                value={column.name}
-                onChange={(event) => renameColumn(column.id, event.target.value)}
+                placeholder="New board"
+                value={boardName}
+                onChange={(e) => setBoardName(e.target.value)}
+                style={{ width: 140 }}
               />
-              <button
-                className="button secondary"
-                onClick={() => deleteColumn(column.id)}
-              >
-                Delete
+              <button className="btn btn-secondary btn-sm" onClick={createBoard}>Add</button>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ position: "relative" }}>
+                <input
+                  className="input"
+                  placeholder="Search tasks..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{ width: 200 }}
+                />
+              </div>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowTeam(!showTeam)}>
+                {showTeam ? "Hide team" : `Team (${members.length})`}
               </button>
             </div>
+          </div>
+
+          {searchQuery && searchResults && (
+            <div className="search-results animate-slide-up">
+              {searchResults.tasks.length === 0 ? (
+                <div style={{ padding: "16px 20px", fontSize: 14, color: "var(--text-secondary)" }}>
+                  No tasks found for "{searchQuery}"
+                </div>
+              ) : (
+                searchResults.tasks.map((task) => (
+                  <button
+                    key={task.id}
+                    className="search-result-item"
+                    onClick={() => { setSelectedTaskId(task.id); setSearchQuery(""); }}
+                  >
+                    <span className="search-result-title">{task.title}</span>
+                    {task.description && <span className="search-result-desc">{task.description}</span>}
+                    <PriorityBadge priority={task.priority} />
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showTeam && (
+        <div className="card animate-slide-up">
+          <div className="card-header">
+            <div>
+              <h3 style={{ fontSize: 15, fontWeight: 600 }}>Team members</h3>
+              <p className="section-subtitle">Manage access and roles</p>
+            </div>
+          </div>
+          <div className="card-body" style={{ paddingTop: 12 }}>
+            {currentMember?.role === "owner" && (
+              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                <input
+                  className="input"
+                  placeholder="Invite by email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  style={{ maxWidth: 300 }}
+                />
+                <button className="btn btn-primary btn-sm" onClick={inviteMember}>Send invite</button>
+              </div>
+            )}
+            <div className="team-list">
+              {members.map((member) => (
+                <div key={member.userId} className="team-member">
+                  <div className="team-member-left">
+                    <div className="team-member-avatar">
+                      {(member.user.displayName ?? member.user.email)[0].toUpperCase()}
+                    </div>
+                    <div className="team-member-info">
+                      <div className="team-member-name">{member.user.displayName ?? member.user.email}</div>
+                      <div className="team-member-email">{member.user.email}</div>
+                    </div>
+                  </div>
+                  <div className="team-member-right">
+                    <span className={`badge ${member.role === "owner" ? "badge-primary" : member.role === "admin" ? "badge-warning" : "badge-neutral"}`}>
+                      {member.role}
+                    </span>
+                    {currentMember?.role === "owner" && member.userId !== user?.id && (
+                      <button className="btn btn-danger btn-sm" onClick={() => removeMember(member.userId)}>
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="board-columns">
+        {columns.map((column) => (
+          <div key={column.id} className="board-column animate-slide-up">
+            <div className="board-column-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <input
+                  className="input"
+                  value={column.name}
+                  onChange={(e) => renameColumn(column.id, e.target.value)}
+                  style={{ fontWeight: 600, fontSize: 13, padding: "4px 8px", minWidth: 0, width: "auto" }}
+                />
+                <span className="board-column-count">{column.tasks.length}</span>
+              </div>
+              <button className="btn btn-ghost btn-sm" onClick={() => deleteColumn(column.id)} style={{ color: "var(--danger)" }}>
+                &times;
+              </button>
+            </div>
+
             {column.tasks.map((task) => (
               <div
                 key={task.id}
-                className="task-card"
+                className="task-card animate-fade-in"
                 onClick={() => setSelectedTaskId(task.id)}
               >
-                <strong>{task.title}</strong>
-                {task.description && <p>{task.description}</p>}
-                <span className="badge">{task.priority}</span>
+                <div className="task-card-title">{task.title}</div>
+                {task.description && (
+                  <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 6, lineHeight: 1.4 }}>{task.description}</div>
+                )}
+                <div className="task-card-meta">
+                  <PriorityBadge priority={task.priority} />
+                  {task.dueDate && (
+                    <span className="badge badge-neutral">
+                      {new Date(task.dueDate).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
               </div>
             ))}
-            <div className="form-stack">
+
+            <div style={{ display: "flex", gap: 8 }}>
               <input
                 className="input"
-                placeholder="New task"
+                placeholder="Add task"
                 value={drafts[column.id] ?? ""}
-                onChange={(event) =>
-                  setDrafts((prev) => ({
-                    ...prev,
-                    [column.id]: event.target.value
-                  }))
-                }
+                onChange={(e) => setDrafts((prev) => ({ ...prev, [column.id]: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === "Enter") createTask(column.id); }}
               />
-              <button className="button" onClick={() => createTask(column.id)}>
-                Add task
-              </button>
+              <button className="btn btn-primary btn-sm" onClick={() => createTask(column.id)}>Add</button>
             </div>
           </div>
         ))}
-        <div className="column">
-          <h3>Add column</h3>
+
+        <div className="board-add-column">
+          <h4 style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>Add column</h4>
           <input
             className="input"
             placeholder="Column name"
             value={columnName}
-            onChange={(event) => setColumnName(event.target.value)}
+            onChange={(e) => setColumnName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") createColumn(); }}
           />
-          <button className="button" onClick={createColumn}>
-            Add column
-          </button>
+          <button className="btn btn-primary btn-sm" onClick={createColumn}>Add column</button>
         </div>
-      </section>
+      </div>
 
       {selectedTaskId && taskDetail?.task && (
         <TaskModal
@@ -399,9 +400,7 @@ const ProjectBoard = () => {
           onClose={() => setSelectedTaskId(null)}
           onRefresh={() => {
             queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-            queryClient.invalidateQueries({
-              queryKey: ["task", selectedTaskId]
-            });
+            queryClient.invalidateQueries({ queryKey: ["task", selectedTaskId] });
           }}
         />
       )}
